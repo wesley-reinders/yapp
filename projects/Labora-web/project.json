@@ -1,0 +1,10 @@
+{
+  "container": "labora-fpm-1",
+  "phpSource": "/Users/wesley/MSML/labora-web",
+  "phpInclude": [
+    "app",
+    "vendor/laravel/framework/src",
+    "vendor/laravel/passport/src",
+    "vendor/symfony/var-dumper"
+  ]
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#11161b">
+    <title>BETTER</title>
+  </head>
+  <body>
+    <header class="toolbar">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">&gt;_</span>
+        <h1>BETTER</h1>
+      </div>
+      <div class="controls">
+        <label class="picker">Project<select id="project" disabled></select></label>
+        <button id="run" class="run" type="button" disabled>Run snippet <kbd id="shortcut">Ctrl ↵</kbd></button>
+      </div>
+    </header>
+    <main class="workspace">
+      <section class="panel editor-panel" aria-labelledby="editor-title">
+        <div class="panel-header">
+          <h2 id="editor-title">Editor</h2>
+          <span id="php-status" role="status">Connecting PHP…</span>
+          <select id="snippet" aria-label="Snippet file" disabled></select>
+        </div>
+        <div id="editor"></div>
+      </section>
+      <section class="panel output-panel" aria-labelledby="output-title">
+        <div class="panel-header">
+          <h2 id="output-title">Output</h2>
+          <span id="status" role="status">Ready</span>
+          <button id="clear" class="clear" type="button" disabled>Clear</button>
+        </div>
+        <div id="output" class="output" tabindex="0" aria-label="PHP output">
+          <p class="placeholder">Run a snippet to see its output here.</p>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
