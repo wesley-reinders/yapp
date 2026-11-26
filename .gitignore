@@ -8,4 +8,6 @@ npm-debug.log*
 .env.*
 !.env.example
 
+/projects/*/project.json
+
 .DS_Store
