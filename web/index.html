@@ -22,7 +22,11 @@
         <div class="panel-header">
           <h2 id="editor-title">Editor</h2>
           <span id="php-status" role="status">Connecting PHP…</span>
-          <select id="snippet" aria-label="Snippet file" disabled></select>
+          <div class="snippet-controls">
+            <select id="snippet" aria-label="Snippet name" disabled></select>
+            <button id="manage-snippets" class="secondary" type="button" disabled>Manage snippets</button>
+            <button id="save-snippet" class="secondary" type="button" disabled>Save</button>
+          </div>
         </div>
         <div id="editor"></div>
       </section>
@@ -30,13 +34,59 @@
         <div class="panel-header">
           <h2 id="output-title">Output</h2>
           <span id="status" role="status">Ready</span>
-          <button id="clear" class="clear" type="button" disabled>Clear</button>
+          <button id="clear" class="secondary" type="button" disabled>Clear</button>
         </div>
         <div id="output" class="output" tabindex="0" aria-label="PHP output">
           <p class="placeholder">Run a snippet to see its output here.</p>
         </div>
       </section>
     </main>
+    <dialog id="snippet-manager" aria-labelledby="snippet-manager-title">
+      <div class="manager-header">
+        <div>
+          <h2 id="snippet-manager-title">Snippet manager</h2>
+          <p id="manager-project" class="placeholder"></p>
+        </div>
+        <button id="new-snippet" class="run" type="button">New snippet</button>
+      </div>
+      <ul id="manager-list" aria-label="Snippets"></ul>
+      <p id="manager-empty" class="placeholder" hidden>No snippets in this project.</p>
+      <p id="manager-status" class="dialog-error" role="status"></p>
+      <div class="dialog-actions">
+        <button id="close-manager" class="secondary" type="button">Close</button>
+      </div>
+    </dialog>
+    <template id="snippet-row">
+      <li class="snippet-row">
+        <button class="secondary open-snippet" type="button"></button>
+        <button class="secondary favorite-snippet" type="button"></button>
+        <button class="secondary rename-snippet" type="button">Rename</button>
+        <button class="secondary delete-snippet" type="button">Delete</button>
+      </li>
+    </template>
+    <dialog id="new-snippet-dialog" aria-labelledby="new-snippet-title">
+      <form id="new-snippet-form">
+        <h2 id="new-snippet-title">New snippet</h2>
+        <label for="snippet-name">Snippet name</label>
+        <input id="snippet-name" name="name" placeholder="example" required autofocus>
+        <p id="new-snippet-error" class="dialog-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button id="cancel-snippet" class="secondary" type="button">Cancel</button>
+          <button id="create-snippet" class="run" type="submit">Create snippet</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="delete-snippet-dialog" aria-labelledby="delete-snippet-title" aria-describedby="delete-snippet-message">
+      <form id="delete-snippet-form">
+        <h2 id="delete-snippet-title">Delete snippet?</h2>
+        <p id="delete-snippet-message" class="placeholder"></p>
+        <p id="delete-snippet-error" class="dialog-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button id="cancel-delete" class="secondary" type="button" autofocus>Cancel</button>
+          <button id="confirm-delete" class="danger" type="submit">Delete snippet</button>
+        </div>
+      </form>
+    </dialog>
     <script type="module" src="/main.js"></script>
   </body>
 </html>

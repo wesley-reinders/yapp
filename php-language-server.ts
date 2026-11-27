@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import type { Message, RequestMessage, ResponseMessage } from 'vscode-jsonrpc';
 import { WebSocket, WebSocketServer } from 'ws';
-import { listProjects, listSnippets, projectFileUri, projectIncludePaths } from './snippet-runner.ts';
+import { listProjects, listSnippets, projectFileUri, projectIncludePaths, snippetFileUri } from './snippet-runner.ts';
 
 const require = createRequire(import.meta.url);
 
@@ -19,10 +19,11 @@ function connectLanguageServer(socket: WebSocket) {
     includePaths: projectIncludePaths(name),
   }));
   const workspaceFolders = projects.map(({ name, uri }) => ({ name, uri }));
-  const snippetUris = new Map(projects.flatMap(({ name }) => listSnippets(name).map((file) => {
-    const uri = projectFileUri(name, file);
+  const getSnippetUris = () => new Map(projects.flatMap(({ name }) => listSnippets(name).map((file) => {
+    const uri = snippetFileUri(name, file);
     return [uri.toLowerCase(), uri] as const;
   })));
+  let snippetUris = getSnippetUris();
   const binary = require.resolve('intelephense');
   const storagePath = mkdtempSync(join(tmpdir(), 'php-snippets-lsp-'));
 
@@ -92,8 +93,13 @@ function connectLanguageServer(socket: WebSocket) {
     } else if (typeof params?.textDocument?.uri === 'string' && params.textDocument.uri.startsWith('file:')) {
       // Monaco can lowercase document notifications while using the original URI for requests.
       const documentUrl = URL.parse(params.textDocument.uri);
-      const uri = documentUrl && snippetUris.get(documentUrl.href.toLowerCase());
-      if (uri) params.textDocument.uri = uri;
+      if (documentUrl) {
+        const key = documentUrl.href.toLowerCase();
+        if (request?.method === 'textDocument/didOpen') {
+          snippetUris = getSnippetUris();
+        }
+        params.textDocument.uri = snippetUris.get(key) ?? params.textDocument.uri;
+      }
     }
     write(message);
   });

@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { Server, type IncomingMessage, type ServerResponse } from 'node:http';
-import { listProjects, listSnippets, projectFileUri, readSnippet, runSnippet } from './snippet-runner.ts';
+import { createSnippet, deleteSnippet, listProjects, listSnippets, readSnippet, renameSnippet, runSnippet, saveSnippet, snippetFileUri } from './snippet-runner.ts';
 import { attachPhpLanguageServer } from './php-language-server.ts';
 
 const host = '127.0.0.1';
@@ -29,12 +29,18 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     if (!projects.includes(project) || !listSnippets(project).includes(file)) {
       return json(response, 404, { error: 'Snippet not found.' });
     }
-    return json(response, 200, { code: readSnippet(project, file), uri: projectFileUri(project, file) });
+    return json(response, 200, { code: readSnippet(project, file), uri: snippetFileUri(project, file) });
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/run') {
+  const isRun = request.method === 'POST' && url.pathname === '/api/run';
+  const isCreate = request.method === 'POST' && url.pathname === '/api/snippet';
+  const isSave = request.method === 'PUT' && url.pathname === '/api/snippet';
+  const isDelete = request.method === 'DELETE' && url.pathname === '/api/snippet';
+  const isRename = request.method === 'PATCH' && url.pathname === '/api/snippet';
+  if (isRun || isCreate || isSave || isDelete || isRename) {
+    const operation = isRun ? 'Run' : 'Snippet';
     if (request.headers.origin !== `http://${authority}` || request.headers['content-type'] !== 'application/json') {
-      return json(response, 403, { error: 'Run requests must come from the local editor.' });
+      return json(response, 403, { error: `${operation} requests must come from the local editor.` });
     }
 
     let body = '';
@@ -42,7 +48,7 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
       body += chunk;
       if (Buffer.byteLength(body) > 128 * 1024) {
         request.resume();
-        return json(response, 413, { error: 'Run requests must be smaller than 128 KB.' });
+        return json(response, 413, { error: `${operation} requests must be smaller than 128 KB.` });
       }
     }
 
@@ -52,17 +58,59 @@ async function handleApi(request: IncomingMessage, response: ServerResponse, url
     } catch {
       return json(response, 400, { error: 'Invalid JSON.' });
     }
-    if (
-      typeof input !== 'object' || input === null || !('project' in input) ||
-      typeof input.project !== 'string' || !projects.includes(input.project) ||
-      !('code' in input) || typeof input.code !== 'string'
-    ) {
-      return json(response, 400, { error: 'Select a configured project and provide PHP code.' });
+    const invalidInput = isRun ? 'Select a configured project and provide PHP code.' : 'Select a configured project.';
+    if (typeof input !== 'object' || input === null || !('project' in input) ||
+        typeof input.project !== 'string' || !projects.includes(input.project)) {
+      return json(response, 400, { error: invalidInput });
+    }
+    const project = input.project;
+
+    if (isCreate || isRename) {
+      const files = listSnippets(project);
+      const original = isRename && 'file' in input && typeof input.file === 'string' ? input.file : '';
+      if (isRename && !files.includes(original)) {
+        return json(response, 404, { error: 'Snippet not found.' });
+      }
+      const proposedName = isRename ? ('name' in input ? input.name : null) : ('file' in input ? input.file : null);
+      const name = typeof proposedName === 'string' ? proposedName.trim() : '';
+      const file = name.replace(/\.php$/i, '') + '.php';
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}\.php$/.test(file)) {
+        return json(response, 400, { error: 'Use 1–120 letters, digits, hyphens, or underscores, starting with a letter or digit.' });
+      }
+      const conflict = () => json(response, 409, { error: 'A snippet with that name already exists.' });
+      if (files.some((existing) => existing !== original && existing.toLowerCase() === file.toLowerCase())) {
+        return conflict();
+      }
+      try {
+        if (isRename) return json(response, 200, renameSnippet(project, original, file));
+        return json(response, 201, createSnippet(project, file));
+      } catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 'EEXIST') return conflict();
+        throw error;
+      }
     }
 
+    if (isSave || isDelete) {
+      if (!('file' in input) || typeof input.file !== 'string' || !listSnippets(project).includes(input.file)) {
+        return json(response, 404, { error: 'Snippet not found.' });
+      }
+      if (isDelete) {
+        deleteSnippet(project, input.file);
+        return json(response, 200, {});
+      }
+      if (!('code' in input) || typeof input.code !== 'string') {
+        return json(response, 400, { error: 'Provide PHP code.' });
+      }
+      saveSnippet(project, input.file, input.code);
+      return json(response, 200, {});
+    }
+
+    if (!('code' in input) || typeof input.code !== 'string') {
+      return json(response, 400, { error: invalidInput });
+    }
     const timeout = AbortSignal.timeout(30_000);
     try {
-      return json(response, 200, await runSnippet(input.project, input.code, timeout));
+      return json(response, 200, await runSnippet(project, input.code, timeout));
     } catch (error) {
       if (timeout.aborted) return json(response, 504, { error: 'The run exceeded 30 seconds.' });
       throw error;
